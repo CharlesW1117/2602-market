@@ -1,36 +1,27 @@
--- TODO
--- Drop tables if they already exist (for clean resets)
-DROP TABLE IF EXISTS order_products;
-DROP TABLE IF EXISTS orders;
-DROP TABLE IF EXISTS products;
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS orders_products, orders, products, users CASCADE;
 
--- Create users table
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(255) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL
 );
 
--- Create products table
 CREATE TABLE products (
-    id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    price DECIMAL NOT NULL
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL
 );
 
--- Create orders table
 CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    date DATE NOT NULL DEFAULT CURRENT_DATE
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  date DATE NOT NULL
 );
 
--- Create junction table for many-to-many relationship between orders and products
-CREATE TABLE order_products (
-    id SERIAL PRIMARY KEY,
-    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    quantity INTEGER NOT NULL
+CREATE TABLE orders_products (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER REFERENCES orders(id),
+  product_id INTEGER REFERENCES products(id),
+  quantity INTEGER NOT NULL
 );
