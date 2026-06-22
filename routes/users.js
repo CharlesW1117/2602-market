@@ -6,12 +6,13 @@ import requireUser from "../middleware/requireUser.js";
 
 const router = express.Router();
 
-// 🧩 Register
+// ✅ Register
 router.post("/register", async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password)
+    if (!username || !password) {
       return res.status(400).send("Missing username or password");
+    }
 
     const hashed = await bcrypt.hash(password, 10);
     const result = await db.query(
@@ -19,36 +20,55 @@ router.post("/register", async (req, res) => {
       [username, hashed],
     );
 
-    res.status(201).json(result.rows[0]);
+    // ✅ Include both id and username in the token
+    const token = jwt.sign(
+      { id: result.rows[0].id, username: result.rows[0].username },
+      process.env.JWT_SECRET,
+    );
+
+    res.status(201).json({ token, user: result.rows[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server error");
+    if (err.code === "23505") {
+      res.status(409).send("Username already exists");
+    } else {
+      res.status(500).send("Server error");
+    }
   }
 });
 
-// 🧩 Login
+// ✅ Login
 router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
     const result = await db.query("SELECT * FROM users WHERE username = $1", [
       username,
     ]);
-    if (result.rows.length === 0)
+
+    if (result.rows.length === 0) {
       return res.status(401).send("Invalid credentials");
+    }
 
     const user = result.rows[0];
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(401).send("Invalid credentials");
+    if (!valid) {
+      return res.status(401).send("Invalid credentials");
+    }
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
-    res.json({ token });
+    // ✅ Include both id and username in the token
+    const token = jwt.sign(
+      { id: user.id, username: user.username },
+      process.env.JWT_SECRET,
+    );
+
+    res.json({ token, user: { id: user.id, username: user.username } });
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
   }
 });
 
-// 🧩 Current user
+// ✅ Current user
 router.get("/me", requireUser, async (req, res) => {
   res.json(req.user);
 });

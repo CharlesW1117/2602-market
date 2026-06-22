@@ -4,7 +4,7 @@ import requireUser from "../middleware/requireUser.js";
 
 const router = express.Router();
 
-// 🧩 Get all orders for logged‑in user
+// Get all orders for logged‑in user
 router.get("/", requireUser, async (req, res) => {
   try {
     const result = await db.query("SELECT * FROM orders WHERE user_id = $1", [
@@ -17,7 +17,7 @@ router.get("/", requireUser, async (req, res) => {
   }
 });
 
-// 🧩 Create new order
+// Create new order
 router.post("/", requireUser, async (req, res) => {
   try {
     const { date } = req.body;
@@ -35,7 +35,7 @@ router.post("/", requireUser, async (req, res) => {
   }
 });
 
-// 🧩 View specific order
+// View specific order
 router.get("/:id", requireUser, async (req, res) => {
   try {
     const orderId = req.params.id;
@@ -56,7 +56,7 @@ router.get("/:id", requireUser, async (req, res) => {
   }
 });
 
-// 🧩 Add product to order
+// Add product to order
 router.post("/:id/products", requireUser, async (req, res) => {
   try {
     const orderId = req.params.id;
@@ -82,7 +82,7 @@ router.post("/:id/products", requireUser, async (req, res) => {
       return res.status(400).send("Product does not exist");
 
     const result = await db.query(
-      "INSERT INTO order_products (order_id, product_id, quantity) VALUES ($1, $2, $3) RETURNING *",
+      "INSERT INTO orders_products (order_id, product_id, quantity) VALUES ($1, $2, $3) RETURNING *",
       [orderId, productId, quantity],
     );
 
@@ -93,7 +93,7 @@ router.post("/:id/products", requireUser, async (req, res) => {
   }
 });
 
-// 🧩 View products in an order
+// View products in an order
 router.get("/:id/products", requireUser, async (req, res) => {
   try {
     const orderId = req.params.id;
@@ -108,8 +108,8 @@ router.get("/:id/products", requireUser, async (req, res) => {
       return res.status(403).send("Not authorized");
 
     const result = await db.query(
-      `SELECT p.id, p.name, p.description, p.price, op.quantity
-       FROM order_products AS op
+      `SELECT p.id, p.title, p.description, p.price, op.quantity
+       FROM orders_products AS op
        JOIN products AS p ON op.product_id = p.id
        WHERE op.order_id = $1`,
       [orderId],
