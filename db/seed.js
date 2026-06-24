@@ -2,9 +2,13 @@ import db from "#db/client";
 
 async function seed() {
   try {
+    // ✅ Connect once before running queries
+    await db.connect();
+
     // Clear existing data
     await db.query(`
-      TRUNCATE orders_products, orders, products, users RESTART IDENTITY CASCADE;
+      TRUNCATE orders_products, orders, products, users
+      RESTART IDENTITY CASCADE;
     `);
 
     // Insert one user
@@ -15,9 +19,9 @@ async function seed() {
     `);
     const userId = userResult.rows[0].id;
 
-    // Insert 10 distinct products
+    // Insert distinct products
     const products = [
-      ["Wireless Mouse", "Ergonomic wireless mouse with USB receiver", 25.99],
+      ["Wireless Mouse", "Ergonomic wireless mouse with USB", 25.99],
       ["Mechanical Keyboard", "RGB backlit mechanical keyboard", 89.99],
       ["Laptop Stand", "Adjustable aluminum laptop stand", 39.99],
       ["Noise Cancelling Headphones", "Over-ear Bluetooth headphones", 129.99],
@@ -31,7 +35,8 @@ async function seed() {
 
     for (const [title, description, price] of products) {
       await db.query(
-        `INSERT INTO products (title, description, price) VALUES ($1, $2, $3);`,
+        `INSERT INTO products (title, description, price)
+         VALUES ($1, $2, $3);`,
         [title, description, price],
       );
     }
@@ -58,10 +63,11 @@ async function seed() {
       );
     }
 
-    console.log("✅ Database seeded successfully!");
+    console.log("🌱 Database seeded successfully!");
   } catch (err) {
-    console.error("❌ Seeding failed:", err);
+    console.error("Seeding failed:", err);
   } finally {
+    // ✅ Disconnect after seeding
     await db.end();
   }
 }
