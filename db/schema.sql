@@ -17,12 +17,12 @@ CREATE TABLE orders (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   date DATE NOT NULL,
-  note TEXT  
+  note TEXT
 );
 
 CREATE TABLE orders_products (
   order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
   product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
   quantity INTEGER DEFAULT 1,
-  PRIMARY KEY (order_id, product_id) 
+  PRIMARY KEY (order_id, product_id)
 );
