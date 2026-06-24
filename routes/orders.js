@@ -6,7 +6,7 @@ import {
   createOrder,
   addProductToOrder,
   getProductsInOrder,
-} from "#db/queries/orders.js";
+} from "..db/queries/orders.js";
 
 const router = express.Router();
 
