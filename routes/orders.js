@@ -1,16 +1,20 @@
 import express from "express";
-import db from "#db/client";
 import requireUser from "../middleware/requireUser.js";
+import {
+  getOrdersByUserId,
+  getOrderById,
+  createOrder,
+  addProductToOrder,
+  getProductsInOrder,
+} from "#db/queries/orders.js";
 
 const router = express.Router();
 
 // Get all orders for logged‑in user
 router.get("/", requireUser, async (req, res) => {
   try {
-    const result = await db.query("SELECT * FROM orders WHERE user_id = $1", [
-      req.user.id,
-    ]);
-    res.json(result.rows);
+    const orders = await getOrdersByUserId(req.user.id);
+    res.json(orders);
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
@@ -20,15 +24,11 @@ router.get("/", requireUser, async (req, res) => {
 // Create new order
 router.post("/", requireUser, async (req, res) => {
   try {
-    const { date } = req.body;
+    const { date, note } = req.body;
     if (!date) return res.status(400).send("Missing date");
 
-    const orderResult = await db.query(
-      "INSERT INTO orders (user_id, date) VALUES ($1, $2) RETURNING *",
-      [req.user.id, date],
-    );
-
-    res.status(201).json(orderResult.rows[0]);
+    const order = await createOrder(req.user.id, date, note);
+    res.status(201).json(order);
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
@@ -39,13 +39,8 @@ router.post("/", requireUser, async (req, res) => {
 router.get("/:id", requireUser, async (req, res) => {
   try {
     const orderId = req.params.id;
-    const orderCheck = await db.query("SELECT * FROM orders WHERE id = $1", [
-      orderId,
-    ]);
-    if (orderCheck.rows.length === 0)
-      return res.status(404).send("Order not found");
-
-    const order = orderCheck.rows[0];
+    const order = await getOrderById(orderId);
+    if (!order) return res.status(404).send("Order not found");
     if (order.user_id !== req.user.id)
       return res.status(403).send("Not authorized");
 
@@ -64,29 +59,13 @@ router.post("/:id/products", requireUser, async (req, res) => {
     if (!productId || !quantity)
       return res.status(400).send("Missing productId or quantity");
 
-    const orderCheck = await db.query("SELECT * FROM orders WHERE id = $1", [
-      orderId,
-    ]);
-    if (orderCheck.rows.length === 0)
-      return res.status(404).send("Order not found");
-
-    const order = orderCheck.rows[0];
+    const order = await getOrderById(orderId);
+    if (!order) return res.status(404).send("Order not found");
     if (order.user_id !== req.user.id)
       return res.status(403).send("Not authorized");
 
-    const productCheck = await db.query(
-      "SELECT * FROM products WHERE id = $1",
-      [productId],
-    );
-    if (productCheck.rows.length === 0)
-      return res.status(400).send("Product does not exist");
-
-    const result = await db.query(
-      "INSERT INTO orders_products (order_id, product_id, quantity) VALUES ($1, $2, $3) RETURNING *",
-      [orderId, productId, quantity],
-    );
-
-    res.status(201).json(result.rows[0]);
+    const added = await addProductToOrder(orderId, productId, quantity);
+    res.status(201).json(added);
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
@@ -97,25 +76,13 @@ router.post("/:id/products", requireUser, async (req, res) => {
 router.get("/:id/products", requireUser, async (req, res) => {
   try {
     const orderId = req.params.id;
-    const orderCheck = await db.query("SELECT * FROM orders WHERE id = $1", [
-      orderId,
-    ]);
-    if (orderCheck.rows.length === 0)
-      return res.status(404).send("Order not found");
-
-    const order = orderCheck.rows[0];
+    const order = await getOrderById(orderId);
+    if (!order) return res.status(404).send("Order not found");
     if (order.user_id !== req.user.id)
       return res.status(403).send("Not authorized");
 
-    const result = await db.query(
-      `SELECT p.id, p.title, p.description, p.price, op.quantity
-       FROM orders_products AS op
-       JOIN products AS p ON op.product_id = p.id
-       WHERE op.order_id = $1`,
-      [orderId],
-    );
-
-    res.json(result.rows);
+    const products = await getProductsInOrder(orderId);
+    res.json(products);
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
