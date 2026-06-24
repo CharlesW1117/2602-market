@@ -1,13 +1,5 @@
 import pg from "pg";
-import dotenv from "dotenv";
 
-dotenv.config();
-
-const client = new pg.Client({
-  connectionString: process.env.DATABASE_URL,
-  ssl: false,
-});
-
-await client.connect();
+const client = new pg.Client(process.env.DATABASE_URL);
 
 export default client;
