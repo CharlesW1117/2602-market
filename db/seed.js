@@ -2,7 +2,7 @@ import db from "#db/client";
 
 async function seed() {
   try {
-    // ✅ Connect once before running queries
+    // Connect once before running queries
     await db.connect();
 
     // Clear existing data

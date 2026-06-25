@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
+import getUserFromToken from "./middleware/getUserFromToken.js";
 import usersRouter from "./routes/users.js";
 import productsRouter from "./routes/products.js";
 import ordersRouter from "./routes/orders.js";
@@ -11,6 +12,9 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Attach decoded user to each request before protected routes
+app.use(getUserFromToken);
 
 // Mount routers
 app.use("/users", usersRouter);

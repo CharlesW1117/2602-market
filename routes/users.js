@@ -1,12 +1,12 @@
 import express from "express";
-import db from "#db/client";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import requireUser from "../middleware/requireUser.js";
+import jwt from "jsonwebtoken";
+import { getUserByUsername, createUser } from "../db/queries/users.js";
 
 const router = express.Router();
+const SECRET = process.env.JWT_SECRET || "supersecret";
 
-// ✅ Register
+// POST /users/register
 router.post("/register", async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -14,63 +14,49 @@ router.post("/register", async (req, res) => {
       return res.status(400).send("Missing username or password");
     }
 
-    const hashed = await bcrypt.hash(password, 10);
-    const result = await db.query(
-      "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username",
-      [username, hashed],
-    );
-
-    // ✅ Include both id and username in the token
-    const token = jwt.sign(
-      { id: result.rows[0].id, username: result.rows[0].username },
-      process.env.JWT_SECRET,
-    );
-
-    res.status(201).json({ token, user: result.rows[0] });
-  } catch (err) {
-    console.error(err);
-    if (err.code === "23505") {
-      res.status(409).send("Username already exists");
-    } else {
-      res.status(500).send("Server error");
-    }
-  }
-});
-
-// ✅ Login
-router.post("/login", async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    const result = await db.query("SELECT * FROM users WHERE username = $1", [
-      username,
-    ]);
-
-    if (result.rows.length === 0) {
-      return res.status(401).send("Invalid credentials");
+    // Check if username already exists
+    const existingUser = await getUserByUsername(username);
+    if (existingUser) {
+      return res.status(400).send("Username already exists");
     }
 
-    const user = result.rows[0];
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
-      return res.status(401).send("Invalid credentials");
-    }
+    // Hash password and create user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await createUser(username, hashedPassword);
 
-    // ✅ Include both id and username in the token
-    const token = jwt.sign(
-      { id: user.id, username: user.username },
-      process.env.JWT_SECRET,
-    );
-
-    res.json({ token, user: { id: user.id, username: user.username } });
+    // Create token and send only the token string
+    const token = jwt.sign({ id: user.id }, SECRET);
+    res.status(201).send(token);
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
   }
 });
 
-// ✅ Current user
-router.get("/me", requireUser, async (req, res) => {
-  res.json(req.user);
+// POST /users/login
+router.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).send("Missing username or password");
+    }
+
+    const user = await getUserByUsername(username);
+    if (!user) {
+      return res.status(401).send("Invalid credentials");
+    }
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return res.status(401).send("Invalid credentials");
+    }
+
+    const token = jwt.sign({ id: user.id }, SECRET);
+    res.status(200).send(token);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error");
+  }
 });
 
 export default router;

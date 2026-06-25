@@ -1,54 +1,50 @@
 import express from "express";
-import db from "#db/client";
 import requireUser from "../middleware/requireUser.js";
+import {
+  getAllProducts,
+  getProductById,
+  getOrdersForProductByUser,
+} from "../db/queries/products.js";
 
 const router = express.Router();
 
-// Get all products
+// GET /products — all products
 router.get("/", async (req, res) => {
   try {
-    const result = await db.query("SELECT * FROM products");
-    res.json(result.rows);
+    const products = await getAllProducts();
+    res.json(products);
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
   }
 });
 
-// Get product by ID
+// GET /products/:id — single product
 router.get("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await db.query("SELECT * FROM products WHERE id = $1", [id]);
-    if (result.rows.length === 0)
-      return res.status(404).send("Product not found");
-    res.json(result.rows[0]);
+    const product = await getProductById(req.params.id);
+    if (!product) return res.status(404).send("Product not found");
+    res.json(product);
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
   }
 });
 
-// Get orders for a product (protected)
+//  GET /products/:id/orders — orders by logged‑in user that include this product
 router.get("/:id/orders", requireUser, async (req, res) => {
   try {
-    const { id } = req.params;
-    const productCheck = await db.query(
-      "SELECT * FROM products WHERE id = $1",
-      [id],
-    );
-    if (productCheck.rows.length === 0)
+    const productId = req.params.id;
+
+    // Check if product exists first
+    const product = await getProductById(productId);
+    if (!product) {
       return res.status(404).send("Product not found");
+    }
 
-    const result = await db.query(
-      `SELECT o.*
-       FROM orders o
-       JOIN orders_products op ON o.id = op.order_id
-       WHERE op.product_id = $1 AND o.user_id = $2`,
-      [id, req.user.id],
-    );
-
-    res.json(result.rows);
+    // Then get orders for this user that include the product
+    const orders = await getOrdersForProductByUser(productId, req.user.id);
+    res.json(orders);
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");

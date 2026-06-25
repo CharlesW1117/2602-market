@@ -1,21 +1,21 @@
-import { getUserById } from "#db/queries/users";
-import { verifyToken } from "#utils/jwt";
+import jwt from "jsonwebtoken";
+import { getUserById } from "../db/queries/users.js";
 
 /**
  * Attaches the user to the request if a valid token is provided
  */
 export default async function getUserFromToken(req, res, next) {
-  const authorization = req.headers.authorization;
-  if (!authorization) return next();
+  const auth = req.headers.authorization;
+  if (!auth) return next();
 
-  const token = authorization.split(" ")[1];
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
+
   try {
-    const { id } = verifyToken(token);
-    const user = await getUserById(id);
-    req.user = user;
-    next();
+    const { id } = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = await getUserById(id);
   } catch (err) {
-    console.error(err);
-    res.status(401).send({ error: "Invalid token" });
+    req.user = null;
   }
+
+  next();
 }

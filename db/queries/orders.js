@@ -1,48 +1,46 @@
-import db from "#db/client";
+import db from "../client.js";
 
-// Get all orders for a specific user
-export async function getOrdersByUserId(userId) {
-  const result = await db.query(
-    "SELECT * FROM orders WHERE user_id = $1 ORDER BY id;",
-    [userId],
+export async function createOrder({ date, note, user_id }) {
+  const {
+    rows: [order],
+  } = await db.query(
+    "INSERT INTO orders (date, note, user_id) VALUES ($1, $2, $3) RETURNING *",
+    [date, note, user_id],
   );
-  return result.rows;
+  return order;
 }
 
-// Get a single order by ID
-export async function getOrderById(orderId) {
-  const result = await db.query("SELECT * FROM orders WHERE id = $1;", [
-    orderId,
+export async function getOrdersByUser(user_id) {
+  const { rows } = await db.query("SELECT * FROM orders WHERE user_id = $1", [
+    user_id,
   ]);
-  return result.rows[0];
+  return rows;
 }
 
-// Create a new order
-export async function createOrder(userId, date, note = null) {
-  const result = await db.query(
-    "INSERT INTO orders (user_id, date, note) VALUES ($1, $2, $3) RETURNING *;",
-    [userId, date, note],
+export async function getOrderById(id) {
+  const {
+    rows: [order],
+  } = await db.query("SELECT * FROM orders WHERE id = $1", [id]);
+  return order;
+}
+
+export async function addProductToOrder(order_id, product_id, quantity) {
+  const {
+    rows: [record],
+  } = await db.query(
+    "INSERT INTO orders_products (order_id, product_id, quantity) VALUES ($1, $2, $3) RETURNING *",
+    [order_id, product_id, quantity],
   );
-  return result.rows[0];
+  return record;
 }
 
-// Add a product to an order
-export async function addProductToOrder(orderId, productId, quantity) {
-  const result = await db.query(
-    "INSERT INTO orders_products (order_id, product_id, quantity) VALUES ($1, $2, $3) RETURNING *;",
-    [orderId, productId, quantity],
-  );
-  return result.rows[0];
-}
-
-// Get all products in an order
-export async function getProductsInOrder(orderId) {
-  const result = await db.query(
+export async function getProductsInOrder(order_id) {
+  const { rows } = await db.query(
     `SELECT p.id, p.title, p.description, p.price, op.quantity
      FROM orders_products AS op
      JOIN products AS p ON op.product_id = p.id
-     WHERE op.order_id = $1;`,
-    [orderId],
+     WHERE op.order_id = $1`,
+    [order_id],
   );
-  return result.rows;
+  return rows;
 }
